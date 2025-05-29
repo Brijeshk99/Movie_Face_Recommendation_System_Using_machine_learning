@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Movie Face Recommendation System</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background-color: #121212;
+      background-image: url("movb.jpg");
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      color: #eee;
+      font-family: 'Montserrat', sans-serif;
+      overflow-x: hidden;
+    }
+    header {
+      background-color: #141414;
+      padding: 20px 40px;
+      border-bottom: 2px solid #e50914;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 {
+      margin: 0;
+      font-weight: 700;
+      font-size: 24px;
+      color: #e50914;
+    }
+    main { padding: 20px 40px 40px; }
+    #webcam-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    video {
+      border-radius: 10px;
+      box-shadow: 0 0 15px #e50914aa;
+      width: 320px;
+      height: 240px;
+      background-color: black;
+      object-fit: cover;
+    }
+    canvas { display: none; }
+    #capture-btn {
+      background-color: #e50914;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-weight: 700;
+      padding: 12px 25px;
+      margin: 20px 0 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    #capture-btn:hover { background-color: #b0070f; }
+    #emotion-display {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ff4747;
+      margin-bottom: 20px;
+      min-height: 28px;
+    }
+    #movies-container { margin-top: 10px; }
+    .movies-row {
+      display: flex;
+      overflow-x: auto;
+      gap: 15px;
+      padding-bottom: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: #e50914 #1a1a1a;
+    }
+    .movies-row::-webkit-scrollbar { height: 10px; }
+    .movies-row::-webkit-scrollbar-track {
+      background: #1a1a1a;
+      border-radius: 5px;
+    }
+    .movies-row::-webkit-scrollbar-thumb {
+      background-color: #e50914;
+      border-radius: 5px;
+    }
+    .movie-card {
+      background-color: #222;
+      border-radius: 8px;
+      width: 300px;
+      flex-shrink: 0;
+      box-shadow: 0 0 8px #e5091480;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+    }
+    .movie-card:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px #e50914cc;
+    }
+    .movie-poster {
+      width: 100%;
+      height: 240px;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      object-fit: cover;
+    }
+    .movie-info {
+      padding: 10px;
+      flex-grow: 1;
+    }
+    .movie-title {
+      font-weight: 700;
+      margin: 0 0 6px 0;
+      font-size: 16px;
+      color: #fff;
+    }
+    #player-container {
+      margin-top: 40px;
+      display: none;
+    }
+    iframe {
+      width: 100%;
+      height: 400px;
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 0 15px #e50914aa;
+    }
+    @media (max-width: 480px) {
+      video {
+        width: 100vw;
+        height: auto;
+        max-height: 260px;
+      }
+      main {
+        padding: 15px 15px 30px;
+      }
+      iframe {
+        height: 220px;
+      }
+    }
+    
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Movie Face Recommendations</h1>
+  </header>
+  <main>
+    <div id="webcam-container">
+      <video id="webcam" autoplay playsinline></video><br />
+      <button id="capture-btn">Capture Face</button>
+      <div id="emotion-display"></div>
+    </div>
+
+    <div id="movies-container">
+      <h2>Recommended Movies</h2>
+      <div class="movies-row" id="movies-row"></div>
+    </div>
+
+    <div id="player-container">
+      <h2 style="color: #e50914;">Now Playing</h2>
+      <iframe id="yt-player" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+  </main>
+
+  <script>
+    const video = document.getElementById('webcam');
+    const captureBtn = document.getElementById('capture-btn');
+    const emotionDisplay = document.getElementById('emotion-display');
+    const moviesRow = document.getElementById('movies-row');
+    const ytPlayer = document.getElementById('yt-player');
+    const playerContainer = document.getElementById('player-container');
+
+    const movieDB = {
+      Happy: [
+        { title: "Entertainment", url: "https://www.youtube.com/embed/smLNCbYNQP4?si=Jok43oMPiookgvzU"   },
+        { title: "Chhichhore", url: "https://www.youtube.com/watch?v=tsxemFX0a7k" },
+        { title:"Bhagam Bhag" ,url:"https://www.youtube.com/embed/qm19BW10FWY?si=eba9t5I8m5_MwrwS" }
+      ],
+      Sad: [
+        { title: "Dear Comrade", url: "https://www.youtube.com/embed/Ll6tXQgufrM?si=sikLMyZ- 255TgaQd"},
+        { title: "Mr. Majnu", url: "https://www.youtube.com/embed/-vGSa3rrF_0?si=Ew1b2JcFv5FJkylj"}
+      ],
+      
+      Angry: [
+        { title: "Hunter", url: "https://www.youtube.com/embed/80jvTVM-80Q?si=P6EV-ekdM7Rp5lbe"},
+        { title: "Raees", url: "https://www.youtube.com/watch?v=J7_1MU3gDk0" },
+        { title: "Hyena", url: "https://www.youtube.com/embed/itRrL-rDIYg?si=zTsZiOszR9O3Oomg"}
+      ],
+      Surprise: [
+        { title: "Hyena", url: "https://www.youtube.com/embed/itRrL-rDIYg?si=zTsZiOszR9O3Oomg"},
+        { title: "Raid 2", url: "https://www.youtube.com/embed/11kBh8c5Bgc?si=zAvOk-OVEJRsPwPR"  }
+      ],
+      Fear: [
+        { title: "Bhoot Bangla", url: "https://www.youtube.com/embed/RGp8YJETKP8?si=WybVQDXdXbxhLjbe" },
+        { title: "Bhootnath", url:"https://www.youtube.com/embed/ezFh132Ko0E?si=31_Ba4dZcxNPDAAc" }
+      ],
+      Neutral: [
+        { title: "Piku", url: "https://www.youtube.com/embed/wjkqm-MZx80?si=le_GZvuAAlltMKAb"  },
+        { title: "Dangal", url: "https://www.youtube.com/embed/M7h-klG51Do?si=BkMykGtrzthKfVei"}
+      ],
+    };
+
+    async function setupWebcam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (error) {
+        alert('Webcam access denied.');
+      }
+    }
+
+    function simulateEmotionDetection() {
+      const emotions = Object.keys(movieDB);
+      return emotions[Math.floor(Math.random() * emotions.length)];
+    }
+
+    function extractVideoId(url) {
+      const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^?&]+)/);
+      return match ? match[1] : null;
+    }
+
+    function displayMovies(emotion) {
+      moviesRow.innerHTML = '';
+      const movies = movieDB[emotion];
+
+      movies.forEach(movie => {
+        const videoId = extractVideoId(movie.url);
+        const card = document.createElement('div');
+        card.className = 'movie-card';
+
+        const img = document.createElement('img');
+        img.className = 'movie-poster';
+        img.src = `https://img.youtube.com/vi/${videoId}/0.jpg`;
+
+        const title = document.createElement('div');
+        title.className = 'movie-title';
+        title.textContent = movie.title;
+
+        card.appendChild(img);
+        card.appendChild(title);
+        card.addEventListener('click', () => {
+          ytPlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+          playerContainer.style.display = 'block';
+        });
+
+        moviesRow.appendChild(card);
+      });
+    }
+
+    captureBtn.addEventListener('click', () => {
+      emotionDisplay.textContent = "Detecting emotion...";
+      setTimeout(() => {
+        const emotion = simulateEmotionDetection();
+        emotionDisplay.textContent = `Detected Emotion: ${emotion}`;
+        displayMovies(emotion);
+      }, 1000);
+    });
+
+    setupWebcam();
+  </script>
+</body>
+</html>
